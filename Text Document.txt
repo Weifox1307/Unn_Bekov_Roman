@@ -1,0 +1,57 @@
+Создание таблицы
+
+CREATE TABLE IF NOT EXISTS quotation_data (
+    id SERIAL PRIMARY KEY,
+    q_date DATE NOT NULL,
+    amount NUMERIC(15, 2) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS qitem (
+    id SERIAL PRIMARY KEY,
+    offer_price NUMERIC(15, 2),
+    vendor_price NUMERIC(15, 2),
+    list_price NUMERIC(15, 2)
+);
+
+-- ==========================================
+-- ЛАБОРАТОРНАЯ РАБОТА №1
+-- ==========================================
+SELECT 
+    TO_CHAR(q_date, 'MM.YYYY') AS "Месяц Год", 
+    SUM(amount) AS "Сумма"
+FROM quotation_data
+WHERE q_date >= '2025-01-01' AND q_date <= '2025-02-28' 
+GROUP BY 1 ORDER BY 1;
+
+
+-- ==========================================
+-- ЛАБОРАТОРНАЯ РАБОТА №2
+-- ==========================================
+CREATE OR REPLACE PROCEDURE create_monthly_report(start_d DATE, end_d DATE)
+LANGUAGE plpgsql AS $$
+BEGIN
+    EXECUTE format('
+        CREATE OR REPLACE VIEW v_monthly_quotation AS
+        SELECT TO_CHAR(q_date, ''MM.YYYY''), SUM(amount)
+        FROM quotation_data WHERE q_date BETWEEN %L AND %L
+        GROUP BY 1', start_d, end_d);
+END; $$;
+
+-- Пример вызова: CALL create_monthly_report('2025-01-01', '2025-03-31');
+-- Проверка: SELECT * FROM v_monthly_quotation;
+
+
+-- ==========================================
+-- ЛАБОРАТОРНАЯ РАБОТА №3
+-- ==========================================
+CREATE OR REPLACE FUNCTION check_price_logic()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.offer_price < NEW.vendor_price OR NEW.offer_price > NEW.list_price THEN
+        RAISE EXCEPTION 'Цена вне диапазона!';
+    END IF;
+    RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_check_qitem_price
+BEFORE INSERT ON qitem FOR EACH ROW EXECUTE FUNCTION check_price_logic();
