@@ -136,6 +136,16 @@ SELECT
         SUM(q.amount) * 100.0 / SUM(SUM(q.amount)) OVER(), 
         2
     ) AS "Доля в общем обороте %"
-FROM agents a
+FROM agents a -- При добавлении строки вызывает ошибку "ERROR:  отношение "agents" не существует
+LINE 13: FROM agents a
+              ^ 
+
+ОШИБКА:  отношение "agents" не существует
+SQL state: 42P01
+Character: 353"
+
+-- Вызывает ошибку при компиляции на строке 13 в строке -> FROM agents a <-
+-- Сообщает, что agents не существует..
+
 JOIN quotation_data q ON a.id = q.agent_id
 GROUP BY a.name;
